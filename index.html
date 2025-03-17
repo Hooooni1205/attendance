@@ -29,15 +29,31 @@
 
     <div class="container">
         <div class="loader"></div> <!-- ✅ 로딩 애니메이션 추가 -->
+        <h2 id="errorMessage" style="display: none; color: red;">🚫 올바른 QR 코드로 접속하세요.</h2>
         <iframe id="appFrame" src=""></iframe> <!-- ✅ iframe 추가 -->
     </div>
 
     <script>
         const googleScriptURL = "https://script.google.com/macros/s/AKfycbynBfY27-KwkQK3UkvigI_nOd2MiDlVHzDmo5Z2o8M0UQOT11f38iv_E33SderZxy-E/exec";
 
+        function getTokenFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get("token");
+        }
+
         function loadApp() {
+            const token = getTokenFromURL();
             const iframe = document.getElementById("appFrame");
-            iframe.src = googleScriptURL;
+            const errorMessage = document.getElementById("errorMessage");
+
+            if (!token) {
+                document.querySelector(".loader").style.display = "none"; // ✅ 로딩 애니메이션 숨김
+                errorMessage.style.display = "block"; // ✅ 접근 차단 메시지 표시
+                return;
+            }
+
+            // ✅ 토큰을 포함하여 iframe 로드
+            iframe.src = `${googleScriptURL}?token=${encodeURIComponent(token)}`;
             iframe.onload = function() {
                 document.querySelector(".loader").style.display = "none"; // ✅ 로딩 애니메이션 숨김
                 iframe.style.display = "block"; // ✅ iframe 표시
