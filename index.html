@@ -65,12 +65,21 @@
         }
 
         window.addEventListener("message", function (event) {
-            if (event.origin !== "https://script.google.com") {
+            console.log("🔹 받은 메시지:", event.data, " | 송신 origin:", event.origin);
+            
+            // 🔹 `event.origin`을 콘솔에 출력하여 실제 송신 도메인 확인 후 허용
+            const allowedOrigins = [
+                "https://script.google.com", 
+                "https://script.googleusercontent.com"
+            ];
+        
+            if (!allowedOrigins.includes(event.origin)) {
                 console.warn("🚨 보안 경고: 허용되지 않은 도메인에서 메시지 수신 거부!", event.origin);
                 return;
             }
+        
             if (event.data.action === "removeToken") {
-                console.log("✅ 메시지 수신 완료! URL에서 토큰 제거 시도...");
+                console.log("✅ URL에서 토큰 제거 실행!");
                 window.history.replaceState(null, "", window.location.pathname);
             }
         }, false);
