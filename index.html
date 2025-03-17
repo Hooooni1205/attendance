@@ -56,20 +56,15 @@
             iframe.onload = function() {
                 document.querySelector(".loader").style.display = "none"; // ✅ 로딩 애니메이션 숨김
                 iframe.style.display = "block"; // ✅ iframe 표시
-
-                // ✅ iframe 내부에서 URL 변경 요청 (해결 방법 1 적용)
-                setTimeout(() => {
-                    iframe.contentWindow.postMessage({ action: "removeToken" }, "*");
-                }, 500);
             };
         }
 
         window.addEventListener("message", function (event) {
             console.log("🔹 받은 메시지:", event.data, " | 송신 origin:", event.origin);
-            
-            // 🔹 `event.origin`을 콘솔에 출력하여 실제 송신 도메인 확인 후 허용
+        
+            // ✅ 실제 수신한 `event.origin` 값을 출력해서 확인
             const allowedOrigins = [
-                "https://script.google.com", 
+                "https://script.google.com",
                 "https://script.googleusercontent.com"
             ];
         
