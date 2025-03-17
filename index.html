@@ -64,13 +64,16 @@
             };
         }
 
-        // ✅ 메시지 리스너 추가 (iframe에서 URL 변경 요청 수신)
-        window.addEventListener("message", (event) => {
-            if (event.data && event.data.action === "removeToken") {
-                window.history.replaceState(null, "", window.location.pathname);
-                console.log("✅ 해결 방법 1: URL에서 토큰 제거 완료!");
+        window.addEventListener("message", function (event) {
+            if (event.origin !== "https://script.google.com") {
+                console.warn("🚨 보안 경고: 허용되지 않은 도메인에서 메시지 수신 거부!", event.origin);
+                return;
             }
-        });
+            if (event.data.action === "removeToken") {
+                console.log("✅ 메시지 수신 완료! URL에서 토큰 제거 시도...");
+                window.history.replaceState(null, "", window.location.pathname);
+            }
+        }, false);
 
         loadApp(); // ✅ 앱 로드 실행
     </script>
