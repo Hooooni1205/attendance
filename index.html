@@ -29,7 +29,7 @@
     <div class="container">
         <div class="loader"></div> <!-- ✅ 로딩 애니메이션 추가 -->
         <h2 id="errorMessage" style="display: none; color: red;">🚫 올바른 QR 코드로 접속하세요.</h2>
-        <iframe id="appFrame" src=""></iframe> <!-- ✅ iframe 추가 -->
+        <div id="iframeContainer"></div> <!-- ✅ iframe을 동적으로 추가할 컨테이너 -->
     </div>
 
     <script>
@@ -42,42 +42,36 @@
 
         function loadApp() {
             const token = getTokenFromURL();
-            const iframe = document.getElementById("appFrame");
             const errorMessage = document.getElementById("errorMessage");
+            const loader = document.querySelector(".loader");
+            const iframeContainer = document.getElementById("iframeContainer");
 
             if (!token) {
-                document.querySelector(".loader").style.display = "none"; // ✅ 로딩 애니메이션 숨김
+                loader.style.display = "none"; // ✅ 로딩 애니메이션 숨김
                 errorMessage.style.display = "block"; // ✅ 접근 차단 메시지 표시
                 return;
             }
 
-            // ✅ 토큰을 포함하여 iframe 로드
+            // ✅ 기존 iframe 제거 (있다면)
+            iframeContainer.innerHTML = "";
+
+            // ✅ 새 iframe 생성 및 추가
+            const iframe = document.createElement("iframe");
+            iframe.id = "appFrame";
             iframe.src = `${googleScriptURL}?token=${encodeURIComponent(token)}`;
             iframe.onload = function() {
-                document.querySelector(".loader").style.display = "none"; // ✅ 로딩 애니메이션 숨김
-                iframe.style.display = "block"; // ✅ iframe 표시
-            };
-        }
+                loader.style.display = "none";
+                iframe.style.display = "block";
+                console.log("✅ iframe 로딩 완료!");
 
-        window.addEventListener("message", function (event) {
-            console.log("🔹 받은 메시지:", event.data, " | 송신 origin:", event.origin);
-        
-            // ✅ 실제 수신한 `event.origin` 값을 출력해서 확인
-            const allowedOrigins = [
-                "https://script.google.com",
-                "https://script.googleusercontent.com"
-            ];
-        
-            if (!allowedOrigins.includes(event.origin)) {
-                console.warn("🚨 보안 경고: 허용되지 않은 도메인에서 메시지 수신 거부!", event.origin);
-                return;
-            }
-        
-            if (event.data.action === "removeToken") {
-                console.log("✅ URL에서 토큰 제거 실행!");
-                window.history.replaceState(null, "", window.location.pathname);
-            }
-        }, false);
+                // ✅ URL에서 토큰 제거
+                setTimeout(() => {
+                    window.history.replaceState(null, "", window.location.pathname);
+                    console.log("✅ URL에서 토큰 제거 완료!");
+                }, 100);
+            };
+            iframeContainer.appendChild(iframe);
+        }
 
         loadApp(); // ✅ 앱 로드 실행
     </script>
