@@ -61,6 +61,21 @@
         }
 
         loadApp(); // ✅ 앱 로드 실행
+        window.addEventListener("DOMContentLoaded", function () {
+            const iframe = document.getElementById("attendanceFrame"); // ✅ 아이프레임 찾기
+    
+            if (iframe) {
+                iframe.onload = function () {
+                    setTimeout(() => {
+                        console.log("✅ 깃허브 페이지에서 `iframe` 내부 URL 변경 시도!");
+    
+                        // ✅ 아이프레임의 URL에서 토큰 제거
+                        iframe.contentWindow.history.replaceState(null, "", iframe.contentWindow.location.pathname);
+                        console.log("✅ 깃허브 페이지에서 `iframe` 내부 URL 변경 완료!");
+                    }, 500);
+                };
+            }
+        });
     </script>
 
 </body>
