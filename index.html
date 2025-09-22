@@ -1,79 +1,172 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AT출퇴근 기록 시스템</title>
-    <style>
-        body { text-align: center; margin: 0; padding: 0; background: #f5f5f5; }
-        .loader { 
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid #ff6b6b;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 50px auto;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>AT출퇴근 기록 시스템</title>
+  <style>
+    :root {
+      color-scheme: dark light;
+      --bg: #0f1115;
+      --text: #e7e9ee;
+      --muted: #a7afc0;
+      --accent: #ff6b6b;
+    }
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans KR","Malgun Gothic",Arial,sans-serif;
+      overflow-x:hidden;
+    }
+    .wrap {
+      height: 100%;
+      display: grid;
+      place-items: center;
+      padding: 0;
+    }
+    .stage {
+      width: 100%;
+      height: 100vh;
+      display: grid;
+      grid-template-rows: 1fr;
+    }
+    @supports (height: 100svh) {
+      .stage { height: 100svh; }
+    }
 
-        iframe {
-            width: 100%;
-            height: 100vh;
-            border: none;
-            display: none; /* ✅ 처음에는 숨겨둠 */
-        }
-    </style>
+    /* 로더 */
+    .loader {
+      width: 54px; height: 54px;
+      border-radius: 50%;
+      border: 5px solid rgba(255,255,255,.15);
+      border-top-color: var(--accent);
+      margin: 28px auto 12px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) {
+      .loader { animation: none; }
+    }
+
+    .msg {
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+      margin: 0 16px;
+    }
+    .msg.error { color: #ffb4b4; }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: none; /* 초기엔 숨김 */
+    }
+  </style>
 </head>
+
+<!-- ★ Storage Bridge: iOS Safari에서 iframe(Apps Script)이 부모 localStorage를 쓰도록 허용 -->
+<script>
+  (function(){
+    const ALLOWED = ["https://script.google.com", "https://script.googleusercontent.com"];
+    window.addEventListener("message", (e) => {
+      try {
+        const d = e.data || {};
+        if (!d || d.__bridge !== "req") return;
+
+        // 보안: 허용된 origin만 처리
+        const okOrigin = ALLOWED.some(o => e.origin && e.origin.startsWith(o));
+        if (!okOrigin) return;
+
+        let value = null;
+        try {
+          if (d.op === "get")   value = localStorage.getItem(d.key);
+          if (d.op === "set")   localStorage.setItem(d.key, d.value);
+          if (d.op === "remove") localStorage.removeItem(d.key);
+        } catch(_) {}
+
+        // 응답은 동일 origin으로 되돌려보냄
+        if (e.source && typeof e.source.postMessage === "function") {
+          e.source.postMessage({ __bridge: "ok", id: d.id, value }, e.origin);
+        }
+      } catch(_) {}
+    });
+  })();
+</script>
+
 <body>
-    <div class="container">
-        <div class="loader"></div> <!-- ✅ 로딩 애니메이션 추가 -->
-        <h2 id="errorMessage" style="display: none; color: red;">🚫 올바른 QR 코드로 접속하세요.</h2>
-        <div id="iframeContainer"></div> <!-- ✅ iframe을 동적으로 추가할 컨테이너 -->
+  <div class="wrap">
+    <div id="loadingArea">
+      <div class="loader" aria-hidden="true"></div>
+      <p class="msg">앱을 불러오는 중…</p>
     </div>
+    <div id="errorArea" class="msg error" style="display:none;">🚫 올바른 QR 코드로 접속하세요.</div>
 
-    <script>
-        const googleScriptURL = "https://script.google.com/macros/s/AKfycbynBfY27-KwkQK3UkvigI_nOd2MiDlVHzDmo5Z2o8M0UQOT11f38iv_E33SderZxy-E/exec";
+    <div id="stage" class="stage">
+      <!-- 스크립트에서 iframe을 동적으로 삽입 -->
+    </div>
+  </div>
 
-        function getTokenFromURL() {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get("token");
+  <noscript>
+    <div class="msg error" style="text-align:center;padding:16px">자바스크립트를 켜야 페이지를 볼 수 있습니다.</div>
+  </noscript>
+
+  <script>
+    // ★ 여기만 네 Apps Script "웹 앱 배포 URL(…/exec)"로 바꿔주세요.
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyxwH9cNfSq1qZvCFzwMv3yG6HG2iSnPR6oxCCZH5-shGtw64xra0eEpt7MijLv2GMz/exec";
+
+    const $ = (id) => document.getElementById(id);
+
+    function getTokenFromURL() {
+      const params = new URLSearchParams(location.search);
+      return params.get("token");
+    }
+
+    function mountIframe(token) {
+      // 기존 iframe 제거
+      $("stage").innerHTML = "";
+
+      const iframe = document.createElement("iframe");
+      iframe.id = "appFrame";
+      iframe.referrerPolicy = "no-referrer"; // 토큰 노출 최소화(부가적)
+      iframe.src = `${APPS_SCRIPT_URL}?token=${encodeURIComponent(token)}`;
+
+      let loaded = false;
+      const timeout = setTimeout(() => {
+        if (!loaded) {
+          $("loadingArea").style.display = "none";
+          $("errorArea").textContent = "⚠️ 로딩이 지연되고 있습니다. 잠시 후 새로고침해 주세요.";
+          $("errorArea").style.display = "block";
         }
+      }, 8000); // 8초 타임아웃
 
-        function loadApp() {
-            const token = getTokenFromURL();
-            const errorMessage = document.getElementById("errorMessage");
-            const loader = document.querySelector(".loader");
-            const iframeContainer = document.getElementById("iframeContainer");
+      iframe.onload = () => {
+        loaded = true;
+        clearTimeout(timeout);
+        $("loadingArea").style.display = "none";
+        iframe.style.display = "block";
 
-            if (!token) {
-                loader.style.display = "none"; // ✅ 로딩 애니메이션 숨김
-                errorMessage.style.display = "block"; // ✅ 접근 차단 메시지 표시
-                return;
-            }
+        // URL에서 토큰 제거(북마크/방문기록 보호)
+        setTimeout(() => {
+          const clean = location.pathname + location.hash; // ?token 제거
+          history.replaceState(null, "", clean);
+        }, 120);
+      };
 
-            // ✅ 기존 iframe 제거 (있다면)
-            iframeContainer.innerHTML = "";
+      $("stage").appendChild(iframe);
+    }
 
-            // ✅ 새 iframe 생성 및 추가
-            const iframe = document.createElement("iframe");
-            iframe.id = "appFrame";
-            iframe.src = `${googleScriptURL}?token=${encodeURIComponent(token)}`;
-            iframe.onload = function() {
-                loader.style.display = "none";
-                iframe.style.display = "block";
-                console.log("✅ iframe 로딩 완료!");
-
-                // ✅ URL에서 토큰 제거
-                setTimeout(() => {
-                    window.history.replaceState(null, "", window.location.pathname);
-                    console.log("✅ URL에서 토큰 제거 완료!");
-                }, 100);
-            };
-            iframeContainer.appendChild(iframe);
-        }
-
-        loadApp(); // ✅ 앱 로드 실행
-    </script>
+    (function bootstrap(){
+      const token = getTokenFromURL();
+      if (!token) {
+        $("loadingArea").style.display = "none";
+        $("errorArea").style.display = "block";
+        return;
+      }
+      mountIframe(token);
+    })();
+  </script>
 </body>
 </html>
